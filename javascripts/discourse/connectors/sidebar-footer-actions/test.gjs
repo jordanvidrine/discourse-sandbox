@@ -5,6 +5,7 @@ import { fn } from "@ember/helper";
 import { on } from "@ember/modifier";
 import EmberObject, { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
+import { TrackedObject } from "@ember-compat/tracked-built-ins";
 import DButton from "discourse/components/d-button";
 import DToggleSwitch from "discourse/components/d-toggle-switch";
 import { ajax } from "discourse/lib/ajax";
@@ -37,7 +38,7 @@ export default class themeSettingSetter extends Component {
             theme.settings.forEach((setting) => {
               settings[setting.setting] = setting.value;
             });
-            this.currentComponentSettings = EmberObject.create(settings);
+            this.currentComponentSettings = new TrackedObject(settings);
             this.settingsObject = theme.settings;
           }
           console.log(this.currentComponentId);
@@ -71,10 +72,8 @@ export default class themeSettingSetter extends Component {
         },
       });
 
-      this.currentComponentSettings.set(
-        settingName,
-        !this.currentComponentSettings[settingName]
-      );
+      this.currentComponentSettings[settingName] =
+        !this.currentComponentSettings[settingName];
     } catch (error) {
       popupAjaxError(error);
     }
