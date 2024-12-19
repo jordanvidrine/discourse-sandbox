@@ -1,9 +1,16 @@
 {
-  "name": "sandbox",
+  "name": "sandbox component",
   "component": true,
   "authors": "Discourse",
   "about_url": "TODO: Put your theme's public repo or Meta topic URL here",
   "license_url": "TODO: Put your theme's LICENSE URL here",
+  "components": [
+    "https://github.com/discourse/discourse-clickable-topic.git",
+    "https://github.com/discourse/discourse-search-banner.git",
+    "https://github.com/discourse/discourse-full-width-component.git",
+    "https://github.com/discourse/discourse-right-sidebar-blocks.git",
+    "https://github.com/discourse/discourse-header-search.git"
+  ],
   "learn_more": "TODO",
   "theme_version": "0.0.1",
   "minimum_discourse_version": null,
@@ -11,5 +18,6 @@
   "assets": {
   },
   "modifiers": {
+    "serialize_topic_excerpts": true
   }
 }
