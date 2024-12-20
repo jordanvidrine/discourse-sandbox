@@ -62,18 +62,17 @@ export default class themeSettingSetter extends Component {
   }
 
   @action
-  async toggleSetting(settingName) {
+  async toggleSetting(settingName, event) {
     try {
-      ajax(`/admin/themes/${this.currentComponentId}/setting`, {
+      await ajax(`/admin/themes/${this.currentComponentId}/setting`, {
         type: "PUT",
         data: {
           name: settingName,
-          value: !this.currentComponentSettings[settingName],
+          value: event.target.checked,
         },
       });
 
-      this.currentComponentSettings[settingName] =
-        !this.currentComponentSettings[settingName];
+      this.currentComponentSettings[settingName].value = event.target.checked;
     } catch (error) {
       popupAjaxError(error);
     }
