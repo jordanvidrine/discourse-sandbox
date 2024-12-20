@@ -20,7 +20,7 @@ export default class ComponentSettingsSelect extends Component {
             {{/each}}
           </field.Select>
         </form.Field>
-        // TODO: add submit button
+        {{!-- TODO: add submit button --}}
       </Form>
   </template>
 }

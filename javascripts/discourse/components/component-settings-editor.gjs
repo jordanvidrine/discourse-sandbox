@@ -117,7 +117,7 @@ export default class themeSettingSetter extends Component {
                 @currentValue={{setting.value}}
                 @toggleSetting={{this.toggleSetting}}
               />
-              // possibly need to change all of these settings into a form and save on submit
+              {{!-- possibly need to change all of these settings into a form and save on submit --}}
             {{/if}}
           </div>
         {{/each}}
