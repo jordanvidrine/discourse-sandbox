@@ -1,9 +1,11 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
+import { htmlSafe } from "@ember/template";
 import { array } from "@ember/helper";
 import { fn } from "@ember/helper";
 import { on } from "@ember/modifier";
-import EmberObject, { action } from "@ember/object";
+import { eq } from "truth-helpers";
+import { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { TrackedObject } from "@ember-compat/tracked-built-ins";
 import DButton from "discourse/components/d-button";
@@ -12,12 +14,14 @@ import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { currentThemeId } from "discourse/lib/theme-selector";
 import icon from "discourse-common/helpers/d-icon";
-import AdminConfigAreaCard from "admin/components/admin-config-area-card";
 import DMenu from "float-kit/components/d-menu";
+import ComponentSettingsSelect from "../components/component-settings-select";
+import ComponentSettingsToggle from "../components/component-settings-toggle";
+
 
 export default class themeSettingSetter extends Component {
   @tracked currentComponentId = null;
-  @tracked currentComponentSettings = null;
+  @tracked currentComponentSettings = new TrackedObject([]);
   @tracked settingsObject = null;
   currentThemeId = currentThemeId();
 
@@ -31,18 +35,17 @@ export default class themeSettingSetter extends Component {
       type: "GET",
     }).then((result) => {
       result.themes.find((theme) => {
-        if (theme.name === "sandbox component") {
+        if (theme.name === "Search Banner") {
           this.currentComponentId = theme.id;
           if (theme.settings) {
-            let settings = {};
             theme.settings.forEach((setting) => {
-              settings[setting.setting] = setting.value;
+              // stores object of settings
+              // this.currentComponentSettings[setting.setting] = setting;
+              this.currentComponentSettings.push(setting); // using array is iterable in template
             });
-            this.currentComponentSettings = new TrackedObject(settings);
-            this.settingsObject = theme.settings;
           }
-          console.log(this.currentComponentId);
           console.log(this.currentComponentSettings);
+
           return true;
         }
         return false;
@@ -63,6 +66,8 @@ export default class themeSettingSetter extends Component {
 
   @action
   async toggleSetting(settingName) {
+    console.log(settingName);
+    
     try {
       ajax(`/admin/themes/${this.currentComponentId}/setting`, {
         type: "PUT",
@@ -79,26 +84,44 @@ export default class themeSettingSetter extends Component {
     }
   }
 
+  @action
+  cleanupComponentData() {
+    this.currentComponentSettings = new TrackedObject([]);
+  }
+
   <template>
     <DMenu
       @identifier="theme-setting-setter"
       @triggers={{array "click"}}
       @placementStrategy="fixed"
-      class="theme-setting-setter"
-      {{didInsert this.getComponentData}}
+      class="theme-setting-setter btn-transparent"
+      @onShow={{this.getComponentData}}
+      @onClose={{this.cleanupComponentData}}
     >
       <:trigger>
         {{icon "cog"}}
       </:trigger>
       <:content>
-        {{this.currentComponentSettings.example_setting}}
-        <DToggleSwitch
-          @state={{this.currentComponentSettings.example_setting}}
-          {{on "click" (fn this.toggleSetting "example_setting")}}
-        />
+        {{#each this.currentComponentSettings as |setting|}}
+          <div class="theme-setting-setter__setting">
+            {{#if (eq setting.type "enum")}}
+              <ComponentSettingsSelect
+                @values={{setting.valid_values}}
+                @label={{setting.setting}}
+                @currentValue={{setting.value}}
+              />
+            {{/if}}
+            {{#if (eq setting.type "bool")}}
+              <ComponentSettingsToggle
+                @setting={{setting.setting}}
+                @currentValue={{setting.value}}
+                @toggleSetting={{this.toggleSetting}}
+              />
+              // possibly need to change all of these settings into a form and save on submit
+            {{/if}}
+          </div>
+        {{/each}}
       </:content>
     </DMenu>
-    {{!-- <DButton @action={{this.getComponentId}} class="new-class" />
-    <DButton @action={{fn (this.setSetting "example_setting" this.currentComponentSettings.example_setting)}} class="new-class" /> --}}
   </template>
 }
