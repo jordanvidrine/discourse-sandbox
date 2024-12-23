@@ -1,5 +1,6 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
+import getURL from "discourse-common/lib/get-url";
 import { array } from "@ember/helper";
 import { fn } from "@ember/helper";
 import { on } from "@ember/modifier";
@@ -15,8 +16,8 @@ import { popupAjaxError } from "discourse/lib/ajax-error";
 import { currentThemeId } from "discourse/lib/theme-selector";
 import icon from "discourse-common/helpers/d-icon";
 import DMenu from "float-kit/components/d-menu";
-import ComponentSettingsSelect from "../components/component-settings-select";
-import ComponentSettingsToggle from "../components/component-settings-toggle";
+import Form from "discourse/components/form";
+
 
 export default class themeSettingSetter extends Component {
   @tracked currentComponentId = null;
@@ -26,6 +27,14 @@ export default class themeSettingSetter extends Component {
 
   get setting() {
     return this.args.setting;
+  }
+
+  get formData() {
+    let formData = {};
+    for (const [key, value] of Object.entries(this.currentComponentSettings)) {
+      formData[key] = value.value;
+    }
+    return formData;
   }
 
   @action
@@ -50,8 +59,9 @@ export default class themeSettingSetter extends Component {
   }
 
   @action
-  setSetting(setting_name, setting_value) {
-    return ajax(`/admin/themes/${this.currentComponentId}/setting`, {
+  async setSetting(setting_name, setting_value) {
+    
+    await ajax(`/admin/themes/${this.currentComponentId}/setting`, {
       type: "PUT",
       data: {
         name: setting_name,
@@ -61,19 +71,22 @@ export default class themeSettingSetter extends Component {
   }
 
   @action
-  async toggleSetting(setting) {
-    const newValue = !setting.value;
+  onSetImage(setting, upload, { set }) { 
+    if (upload) {    
+      const baseUrlPattern = /^.*(?=\/uploads)/;
+      let cleanUrl = upload.url.replace(baseUrlPattern, '');
+      console.log(cleanUrl);
+    
+      set(`${setting.setting}`, getURL(cleanUrl));
+    } else {
+      set(`${setting.setting}`, "");
+    }
+  }
 
-    try {
-      this.currentComponentSettings[setting.setting].value = newValue;
-
-      await ajax(`/admin/themes/${this.currentComponentId}/setting`, {
-        type: "PUT",
-        data: { name: setting.setting, value: newValue },
-      });
-    } catch (error) {
-      this.currentComponentSettings[setting.setting].value = setting.value;
-      popupAjaxError(error);
+  @action
+  formSave(data) {
+    for (const [key, value] of Object.entries(data)) {
+      this.setSetting(key, value);
     }
   }
 
@@ -89,24 +102,48 @@ export default class themeSettingSetter extends Component {
         {{icon "cog"}}
       </:trigger>
       <:content>
-        {{#each-in this.currentComponentSettings as |key setting|}}
-          <div class="theme-setting-setter__setting">
-            {{#if (eq setting.type "enum")}}
-              <ComponentSettingsSelect
-                @values={{setting.valid_values}}
-                @label={{setting.setting}}
-                @currentValue={{setting.value}}
-              />
-            {{/if}}
-            {{#if (eq setting.type "bool")}}
-              <ComponentSettingsToggle
-                @setting={{setting}}
-                @toggleSetting={{this.toggleSetting}}
-              />
-              {{! possibly need to change all of these settings into a form and save on submit }}
-            {{/if}}
-          </div>
-        {{/each-in}}
+        <Form @data={{this.formData}} @onSubmit={{this.formSave}} as |form data|>
+          {{#each-in this.currentComponentSettings as |key setting|}}
+            <div class="theme-setting-setter__setting">
+                {{#if (eq setting.type "enum")}}
+                  <form.Field
+                    @title={{setting.setting}}
+                    @name={{setting.setting}}
+                    @format="large"
+                    as |field|
+                  >
+                    <field.Select as |select|>
+                      {{#each setting.valid_values as |valueOption|}}
+                        <select.Option
+                          @value={{valueOption}}
+                        >{{valueOption}}</select.Option>
+                      {{/each}}
+                    </field.Select>
+                  </form.Field>
+                {{/if}}
+                {{#if (eq setting.type "upload")}}
+                  <form.Field
+                    @title={{setting.setting}}
+                    @name={{setting.setting}}
+                    @onSet={{(fn this.onSetImage setting)}}
+                    as |field|>
+                      <field.Image @type="theme_setting" />
+                    </form.Field>
+                {{/if}}
+                {{#if (eq setting.type "bool")}}
+                  <form.Field
+                    @title={{setting.setting}}
+                    @name={{setting.setting}}
+                    @format="large"
+                    as |field|
+                    >
+                      <field.Toggle/>
+                  </form.Field>
+                {{/if}}
+            </div>
+          {{/each-in}}
+          <form.Submit @translatedLabel="Save" />
+        </Form>
       </:content>
     </DMenu>
   </template>
