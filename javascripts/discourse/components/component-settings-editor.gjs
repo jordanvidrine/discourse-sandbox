@@ -32,8 +32,10 @@ export default class themeSettingSetter extends Component {
   get formData() {
     let formData = {};
     for (const [key, value] of Object.entries(this.currentComponentSettings)) {
-      formData[key] = value.value;
-    }
+      for (const [settingKey, settingValue] of Object.entries(value)) {
+        formData[settingKey] = settingValue.value;
+      }
+    }    
     return formData;
   }
 
@@ -50,8 +52,18 @@ export default class themeSettingSetter extends Component {
 
       this.currentComponentId = searchBannerComponent.id;
 
+      // building an object, organized by type of setting
+      // I do this so I can loop through the object by type in the template
+      // rather than looping through all settings
       searchBannerComponent.settings.forEach((setting) => {
-        this.currentComponentSettings[setting.setting] = new TrackedObject(
+        if (this.currentComponentSettings[setting.type] === undefined) {
+          this.currentComponentSettings[setting.type] = new TrackedObject();
+        }
+      });
+
+      // assigning the settings to the object housed under each "type" of setting
+      searchBannerComponent.settings.forEach((setting) => {
+        this.currentComponentSettings[setting.type][setting.setting] = new TrackedObject(
           setting
         );
       });
@@ -60,7 +72,6 @@ export default class themeSettingSetter extends Component {
 
   @action
   async setSetting(setting_name, setting_value) {
-    
     await ajax(`/admin/themes/${this.currentComponentId}/setting`, {
       type: "PUT",
       data: {
@@ -73,9 +84,9 @@ export default class themeSettingSetter extends Component {
   @action
   onSetImage(setting, upload, { set }) { 
     if (upload) {    
+      // Remove the base URL from the upload URL (somehow this is needed inside of a theme component)
       const baseUrlPattern = /^.*(?=\/uploads)/;
       let cleanUrl = upload.url.replace(baseUrlPattern, '');
-      console.log(cleanUrl);
     
       set(`${setting.setting}`, getURL(cleanUrl));
     } else {
@@ -84,9 +95,9 @@ export default class themeSettingSetter extends Component {
   }
 
   @action
-  formSave(data) {
+  formSave(data) {            
     for (const [key, value] of Object.entries(data)) {
-      this.setSetting(key, value);
+     this.setSetting(key, value);
     }
   }
 
@@ -103,45 +114,72 @@ export default class themeSettingSetter extends Component {
       </:trigger>
       <:content>
         <Form @data={{this.formData}} @onSubmit={{this.formSave}} as |form data|>
-          {{#each-in this.currentComponentSettings as |key setting|}}
-            <div class="theme-setting-setter__setting">
-                {{#if (eq setting.type "enum")}}
-                  <form.Field
-                    @title={{setting.setting}}
-                    @name={{setting.setting}}
-                    @format="large"
-                    as |field|
-                  >
-                    <field.Select as |select|>
-                      {{#each setting.valid_values as |valueOption|}}
-                        <select.Option
-                          @value={{valueOption}}
-                        >{{valueOption}}</select.Option>
-                      {{/each}}
-                    </field.Select>
-                  </form.Field>
-                {{/if}}
-                {{#if (eq setting.type "upload")}}
-                  <form.Field
-                    @title={{setting.setting}}
-                    @name={{setting.setting}}
-                    @onSet={{(fn this.onSetImage setting)}}
-                    as |field|>
-                      <field.Image @type="theme_setting" />
-                    </form.Field>
-                {{/if}}
-                {{#if (eq setting.type "bool")}}
-                  <form.Field
-                    @title={{setting.setting}}
-                    @name={{setting.setting}}
-                    @format="large"
-                    as |field|
-                    >
-                      <field.Toggle/>
-                  </form.Field>
-                {{/if}}
+          {{#if this.currentComponentSettings.enum}}
+          <div class="theme-setting-setter__setting-enum">            
+            {{#each-in this.currentComponentSettings.enum as |key setting|}}
+              <form.Field
+                @title={{setting.setting}}
+                @name={{setting.setting}}
+                @description={{htmlSafe setting.description}}
+                @format="medium"
+                as |field|
+              >
+                <field.Select as |select|>
+                  {{#each setting.valid_values as |valueOption|}}
+                    <select.Option
+                      @value={{valueOption}}
+                    >{{valueOption}}</select.Option>
+                  {{/each}}
+                </field.Select>
+              </form.Field>
+            {{/each-in}}
+          </div>
+          {{/if}}
+          {{#if this.currentComponentSettings.upload}}
+          <div class="theme-setting-setter__setting-upload">
+            {{#each-in this.currentComponentSettings.upload as |key setting|}}
+              <form.Field
+                @title={{setting.setting}}
+                @name={{setting.setting}}
+                @onSet={{(fn this.onSetImage setting)}}
+                @description={{htmlSafe setting.description}}
+                @format="medium"
+                as |field|>
+                  <field.Image @type="theme_setting" />
+              </form.Field>
+            {{/each-in}}
+          </div>
+          {{/if}}
+          {{#if this.currentComponentSettings.bool}}
+          <div class="theme-setting-setter__setting-bool">
+            {{#each-in this.currentComponentSettings.bool as |key setting|}}
+              <form.Field
+                @title={{setting.setting}}
+                @name={{setting.setting}}
+                @description={{htmlSafe setting.description}}
+                @format="medium"
+                as |field|
+                >
+                  <field.Toggle/>
+              </form.Field>
+            {{/each-in}}
             </div>
-          {{/each-in}}
+            {{/if}}
+            {{#if this.currentComponentSettings.string}}
+            <div class="theme-setting-setter__setting-string">
+              {{#each-in this.currentComponentSettings.string as |key setting|}}
+                <form.Field
+                  @title={{setting.setting}}
+                  @name={{setting.setting}}
+                  @description={{htmlSafe setting.description}}
+                  @format="medium"
+                  as |field|
+                  >
+                    <field.Input/>
+                </form.Field>
+              {{/each-in}}
+              </div>
+              {{/if}}
           <form.Submit @translatedLabel="Save" />
         </Form>
       </:content>
